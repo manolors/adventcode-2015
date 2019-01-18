@@ -13,8 +13,9 @@ func main() {
 	}
 
 	floor := 0
-	for _, rune := range file {
-		switch string(rune) {
+	position := -1
+	for i := 1; i <= len(file); i++ {
+		switch string(file[i-1]) {
 		case "(":
 			floor = floor + 1
 			break
@@ -22,7 +23,12 @@ func main() {
 			floor = floor - 1
 			break
 		}
+
+		if floor < 0 && position < 0 {
+			position = i
+		}
 	}
 
 	fmt.Println("Floor ", floor)
+	fmt.Println("Position ", position)
 }
