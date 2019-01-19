@@ -7,39 +7,45 @@ import (
 	"strings"
 )
 
-func calcDimensions(l int, w int, h int) int {
-	return 2*l*w + 2*w*h + 2*h*l
+type GiftSize struct {
+	l int
+	w int
+	h int
 }
 
-func getSmallestSide(l int, w int, h int) int {
-	if l > w && l > h {
-		return w * h
-	}
-
-	if w > h {
-		return l * h
-	}
-
-	return l * w
+func calcDimensions(g GiftSize) int {
+	return 2*g.l*g.w + 2*g.w*g.h + 2*g.h*g.l
 }
 
-func getRibbonSize(l int, w int, h int) int {
-	if l > w && l > h {
-		return w*2 + h*2
+func getSmallestSide(g GiftSize) int {
+	if g.l > g.w && g.l > g.h {
+		return g.w * g.h
 	}
 
-	if w > h {
-		return l*2 + h*2
+	if g.w > g.h {
+		return g.l * g.h
 	}
 
-	return l*2 + w*2
+	return g.l * g.w
 }
 
-func getCubicVolume(l int, w int, h int) int {
-	return l * w * h
+func getRibbonSize(g GiftSize) int {
+	if g.l > g.w && g.l > g.h {
+		return g.w*2 + g.h*2
+	}
+
+	if g.w > g.h {
+		return g.l*2 + g.h*2
+	}
+
+	return g.l*2 + g.w*2
 }
 
-func lineToDimensions(s string) (int, int, int) {
+func getCubicVolume(g GiftSize) int {
+	return g.l * g.w * g.h
+}
+
+func lineToDimensions(s string) GiftSize {
 	dimensions := strings.Split(s, "x")
 	l, err := strconv.Atoi(dimensions[0])
 	if err != nil {
@@ -53,7 +59,7 @@ func lineToDimensions(s string) (int, int, int) {
 	if err != nil {
 		panic(err)
 	}
-	return l, w, h
+	return GiftSize{l, w, h}
 }
 
 func main() {
@@ -67,9 +73,9 @@ func main() {
 	ribbonSize := 0
 	for index := 0; index <= len(file); index++ {
 		if index == len(file) || file[index] == 10 {
-			l, w, h := lineToDimensions(line)
-			totalPaper = totalPaper + calcDimensions(l, w, h) + getSmallestSide(l, w, h)
-			ribbonSize = ribbonSize + getRibbonSize(l, w, h) + getCubicVolume(l, w, h)
+			gift := lineToDimensions(line)
+			totalPaper = totalPaper + calcDimensions(gift) + getSmallestSide(gift)
+			ribbonSize = ribbonSize + getSmallestSide(gift) + getCubicVolume(gift)
 			line = ""
 		} else {
 			line = line + string(file[index])
