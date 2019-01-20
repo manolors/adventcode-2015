@@ -11,7 +11,6 @@ func inc(i *int) {
 }
 func checkNiceVowels(s string) bool {
 	matches := 0
-
 	for _, rune := range s {
 		if strings.ContainsAny(string(rune), "a & e & i & o & u") {
 			inc(&matches)
@@ -41,10 +40,32 @@ func checkBlacklist(s string) bool {
 }
 
 func isNiceString(s string) bool {
-	checkVowels := checkNiceVowels(s)
-	checkDupes := checkDuplicateLetter(s)
-	checkBlack := checkBlacklist(s)
-	return checkBlack && checkDupes && checkVowels
+	// checkVowels := checkNiceVowels(s)
+	// checkDupes := checkDuplicateLetter(s)
+	// checkBlack := checkBlacklist(s)
+	checkDupes2 := checkDuplicatedPair(s)
+	return checkDupes2
+}
+
+func checkDuplicatedPair(s string) bool {
+	pairs := make(map[string]int)
+	prevRune := string(s[0])
+	first := true
+	for _, rune := range s {
+		if first {
+			first = false
+			continue
+		}
+		_, ok := pairs[prevRune+string(rune)]
+
+		if !ok {
+			pairs[prevRune+string(rune)] = 1
+			prevRune = string(rune)
+		} else {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
