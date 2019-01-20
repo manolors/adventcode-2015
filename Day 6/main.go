@@ -9,7 +9,7 @@ import (
 
 const Size = 1000
 
-var lights [Size][Size]bool
+var lights [Size][Size]int
 
 type Action struct {
 	action string
@@ -46,22 +46,22 @@ func getData(s string) Action {
 	return Action{action, getCoords(runes[0]), getCoords(runes[1])}
 }
 
-func handleLights(s string, b bool) bool {
-	switch s {
-	case "turn on":
-		return true
-	case "turn off":
-		return false
-	case "toggle":
-		return !b
+func handleLights(s string) int {
+	intensities := map[string]int{
+		"turn on":  1,
+		"turn off": -1,
+		"toggle":   2,
 	}
-	return true
+	return intensities[s]
 }
 
 func processAction(a Action) bool {
 	for i := a.start.x; i <= a.end.x; i++ {
 		for j := a.start.y; j <= a.end.y; j++ {
-			lights[i][j] = handleLights(a.action, lights[i][j])
+			lights[i][j] = lights[i][j] + handleLights(a.action)
+			if lights[i][j] < 0 {
+				lights[i][j] = 0
+			}
 		}
 	}
 	return true
@@ -71,9 +71,7 @@ func countLitLights() int {
 	count := 0
 	for i := 0; i < Size; i++ {
 		for j := 0; j < Size; j++ {
-			if lights[i][j] {
-				count = count + 1
-			}
+			count = count + lights[i][j]
 		}
 	}
 	return count
@@ -98,5 +96,5 @@ func main() {
 		}
 	}
 
-	fmt.Println("Lit Lights:", countLitLights())
+	fmt.Println("Total intensity:", countLitLights())
 }
