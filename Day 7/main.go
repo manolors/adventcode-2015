@@ -8,8 +8,8 @@ import (
 )
 
 var wires = map[string]uint16{}
+var connectedWires = map[string]bool{}
 
-// x AND y -> z
 type LogicOperation struct {
 	operation string // AND - OR
 	wire1     string
@@ -26,11 +26,22 @@ type ShiftOperation struct {
 // 100 -> z
 type SignalAssignment struct {
 	signalValue uint16
+	wire        string
+}
+
+// 100 -> z
+type WireAssignment struct {
+	signalWire      string
+	destinationWire string
 }
 
 // NOT x -> z
 type NegateSignal struct {
 	wire string
+}
+
+func getDestinationWire(s string) string {
+	return strings.Split(s, " -> ")[1]
 }
 
 func getOperationType(s string) string {
@@ -52,7 +63,15 @@ func getOperationType(s string) string {
 		return "NegateSignal"
 	}
 
+	data := strings.Split(s, " -> ")
+
+	_, err := strconv.Atoi(data[0])
+
+	if err != nil {
+		return "WireAssignment"
+	}
 	return "SignalAssignment"
+
 }
 
 func getLogicOperation(s string) LogicOperation {
@@ -66,16 +85,20 @@ func getShiftOperation(s string) ShiftOperation {
 	return ShiftOperation{values[1], values[0], uint16(shiftValue)}
 }
 
-func getSignalAssignment(s string) SignalAssignment {
-	shiftValue, _ := strconv.Atoi(s)
-	return SignalAssignment{uint16(shiftValue)}
+func getSignalAssignment(s string, w string) SignalAssignment {
+	signalValue, _ := strconv.Atoi(s)
+	return SignalAssignment{uint16(signalValue), w}
+}
+
+func getWireAssignment(s string, w string) WireAssignment {
+	return WireAssignment{strings.Split(s, " -> ")[0], w}
 }
 
 func getNegateSignal(s string) NegateSignal {
-	return NegateSignal{strings.TrimPrefix(s, "NOT ")}
+	return NegateSignal{strings.TrimPrefix(strings.Split(s, " -> ")[0], "NOT ")}
 }
 
-func getSignals(wire1 string, wire2 string) (uint16, uint16) {
+func getSignalsFromWires(wire1 string, wire2 string) (uint16, uint16) {
 	var signal int
 	var signal1, signal2 uint16
 	var err error
@@ -95,7 +118,7 @@ func getSignals(wire1 string, wire2 string) (uint16, uint16) {
 }
 
 func (lo LogicOperation) apply() uint16 {
-	signal1, signal2 := getSignals(lo.wire1, lo.wire2)
+	signal1, signal2 := getSignalsFromWires(lo.wire1, lo.wire2)
 	switch lo.operation {
 	case "AND":
 		return signal1 & signal2
@@ -107,6 +130,10 @@ func (lo LogicOperation) apply() uint16 {
 
 func (sa SignalAssignment) apply() uint16 {
 	return sa.signalValue
+}
+
+func (wa WireAssignment) apply() uint16 {
+	return wires[wa.signalWire]
 }
 
 func (so ShiftOperation) apply() uint16 {
@@ -123,33 +150,88 @@ func (ns NegateSignal) apply() uint16 {
 	return ^wires[ns.wire]
 }
 
-func getWireValue(s string) uint16 {
-	switch getOperationType(s) {
-	case "LogicOperation":
-		return getLogicOperation(s).apply()
-	case "ShiftOperation":
-		return getShiftOperation(s).apply()
-	case "NegateSignal":
-		return getNegateSignal(s).apply()
-	case "SignalAssignment":
-		return getSignalAssignment(s).apply()
-	}
-	panic("Invalid Operation")
-}
-
 func applyOperation(s string) {
 	data := strings.Split(s, " -> ")
 	destinationWire := data[1]
-	operation := data[0]
 
 	_, ok := wires[destinationWire]
-
+	// initialize all destination wires
 	if !ok {
 		wires[destinationWire] = 0
 	}
+	operationType := getOperationType(s)
+	switch operationType {
+	case "LogicOperation":
+		wires[destinationWire] = getLogicOperation(data[0]).apply()
+	case "ShiftOperation":
+		wires[destinationWire] = getShiftOperation(data[0]).apply()
+	case "NegateSignal":
+		wires[destinationWire] = getNegateSignal(data[0]).apply()
+	case "SignalAssignment":
+		wires[destinationWire] = getSignalAssignment(data[0], destinationWire).apply()
+	case "WireAssignment":
+		wires[destinationWire] = getWireAssignment(data[0], destinationWire).apply()
+	}
+	//applyOperation(operation, destinationWire)
+}
 
-	wires[destinationWire] = getWireValue(operation)
+func addConnectedWire(s string) {
+	connectedWires[s] = true
+}
 
+func applySignalAssignment(sa SignalAssignment) {
+	addConnectedWire(sa.wire)
+	wires[sa.wire] = sa.signalValue
+}
+
+func (lo LogicOperation) areWiresConnected() bool {
+	// wire could be a number!
+	_, err := strconv.Atoi(lo.wire1)
+	ok1 := true
+	ok2 := true
+	if err != nil {
+		_, ok1 = wires[lo.wire1]
+	}
+	_, err2 := strconv.Atoi(lo.wire2)
+
+	if err2 != nil {
+		_, ok2 = wires[lo.wire2]
+	}
+
+	return ok1 && ok2
+}
+
+func (so ShiftOperation) isWireConnected() bool {
+	_, ok := wires[so.wire]
+	return ok
+}
+
+func (ns NegateSignal) isWireConnected() bool {
+	_, ok := wires[ns.wire]
+	return ok
+}
+
+func (wa WireAssignment) isWireConnected() bool {
+	_, ok := wires[wa.signalWire]
+	return ok
+}
+
+func canApplyOperation(s string) bool {
+	operationType := getOperationType(s)
+
+	switch operationType {
+	case "LogicOperation":
+		return getLogicOperation(s).areWiresConnected()
+	case "ShiftOperation":
+		return getShiftOperation(s).isWireConnected()
+	case "WireAssignment":
+		return getWireAssignment(s, strings.Split(s, " -> ")[1]).isWireConnected()
+	case "NegateSignal":
+		return getNegateSignal(s).isWireConnected()
+	case "SignalAssignment":
+		return true
+	}
+	return false
 }
 
 func main() {
@@ -159,16 +241,29 @@ func main() {
 		panic(err)
 	}
 
-	line := ""
+	operations := strings.Split(string(file), "\n")
+	pendingOperations := []string{}
+	loops := 0
+	compares := 0
 
-	for index := 0; index <= len(file); index++ {
-		if index == len(file) || file[index] == 10 {
-			applyOperation(line)
-			line = ""
-		} else {
-			line = line + string(file[index])
+	// TODO - REFACTOR!! FUCKING INEFFICIENT!!
+	// 113 Loops and 19191 compares...
+	for len(operations) > 0 {
+		loops++
+		size := len(operations)
+		for i := 0; i < size; i++ {
+			compares++
+			if canApplyOperation(operations[i]) {
+				applyOperation(operations[i])
+			} else {
+				pendingOperations = append(pendingOperations, operations[i])
+			}
 		}
+		operations = pendingOperations
+		pendingOperations = nil
 	}
 
 	fmt.Println("Wire a:", wires["a"])
+	fmt.Println("Loops:", loops)
+	fmt.Println("Compares:", compares)
 }
