@@ -8,7 +8,6 @@ import (
 )
 
 var wires = map[string]uint16{}
-var connectedWires = map[string]bool{}
 
 type LogicOperation struct {
 	operation string // AND - OR
@@ -38,10 +37,6 @@ type WireAssignment struct {
 // NOT x -> z
 type NegateSignal struct {
 	wire string
-}
-
-func getDestinationWire(s string) string {
-	return strings.Split(s, " -> ")[1]
 }
 
 func getOperationType(s string) string {
@@ -172,16 +167,6 @@ func applyOperation(s string) {
 	case "WireAssignment":
 		wires[destinationWire] = getWireAssignment(data[0], destinationWire).apply()
 	}
-	//applyOperation(operation, destinationWire)
-}
-
-func addConnectedWire(s string) {
-	connectedWires[s] = true
-}
-
-func applySignalAssignment(sa SignalAssignment) {
-	addConnectedWire(sa.wire)
-	wires[sa.wire] = sa.signalValue
 }
 
 func (lo LogicOperation) areWiresConnected() bool {
